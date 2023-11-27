@@ -64,6 +64,7 @@ class Cycling extends Workout {
 // Application Architecture
 class App {
     #map;
+    #mapZoomLevel = 13;
     #mapEvent;
     #workouts = [];
 
@@ -73,6 +74,8 @@ class App {
         form.addEventListener('submit', this._newWorkout.bind(this));
 
         inputType.addEventListener('change', this._toggleElevationField.bind(this));
+
+        containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
     }
 
     _getPosition() {
@@ -85,20 +88,13 @@ class App {
 
     _loadMap(position) {
         const { latitude, longitude } = position.coords;
-        console.log(latitude, longitude);
-        console.log(`https://www.google.com/maps/@${latitude},${longitude}`);
 
         // Display map on current location
-        this.#map = L.map('map').setView([latitude, longitude], 12);
+        this.#map = L.map('map').setView([latitude, longitude], this.#mapZoomLevel);
 
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         }).addTo(this.#map);
-
-        /* L.marker([latitude, longitude])
-            .addTo(this.#map)
-            .bindPopup(L.popup({ content: `I'm here`, closeOnClick: false, autoClose: false }))
-            .openPopup(); */
 
         this.#map.on('click', this._showForm.bind(this));
     }
@@ -162,7 +158,6 @@ class App {
 
         // Add the new object to workout array
         this.#workouts.push(workout);
-        console.log(this.#workouts);
 
         // Display marker for a created workout
         this._renderWorkoutMarker(workout);
@@ -234,6 +229,21 @@ class App {
         }
 
         form.insertAdjacentHTML('afterend', html);
+    }
+
+    _moveToPopup(e) {
+        const workoutEl = e.target.closest('.workout');
+
+        if (!workoutEl) return;
+
+        const workout = this.#workouts.find(w => w.id === workoutEl.dataset.id);
+
+        this.#map.setView(workout.coords, this.#map.getZoom(), {
+            animate: true,
+            pan: {
+                duration: 1,
+            },
+        });
     }
 }
 
