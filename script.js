@@ -11,6 +11,7 @@ const inputElevation = document.querySelector('.form__input--elevation');
 class Workout {
     date = new Date();
     id = (Date.now() + '').slice(-10);
+    marker;
 
     constructor(coords, distance, duration) {
         this.coords = coords; // [lat, lng]
@@ -181,8 +182,37 @@ class App {
         this._setLocalStorage();
     }
 
+    _findWorkoutElement = e => e.target.closest('.workout');
+
+    _findWorkout = el => this.#workouts.find(w => w.id === el.dataset.id);
+
+    _removeWorkout(e) {
+        // Find element in DOM
+        const workoutEl = this._findWorkoutElement(e);
+
+        if (!workoutEl) {
+            alert('Some error! Cannot find an item');
+            return;
+        }
+
+        // Find item in array
+        const workout = this._findWorkout(workoutEl);
+        if (!workout) return;
+
+        const index = this.#workouts.indexOf(workout);
+        if (index > -1) {
+            this.#workouts.splice(index, 1);
+            workoutEl.remove();
+            workout.marker.remove();
+
+            // Save changes
+            // TODO TypeError: Converting circular structure to JSON
+            this._setLocalStorage();
+        }
+    }
+
     _renderWorkoutMarker(workout) {
-        L.marker(workout.coords)
+        workout.marker = L.marker(workout.coords)
             .addTo(this.#map)
             .bindPopup(
                 L.popup({
@@ -222,8 +252,7 @@ class App {
             <span class="workout__icon">🦶🏼</span>
             <span class="workout__value">${workout.cadence}</span>
             <span class="workout__unit">spm</span>
-          </div>
-        </li>`;
+          </div>`;
         }
 
         if (workout.type === 'cycling') {
@@ -236,19 +265,28 @@ class App {
             <span class="workout__icon">⛰</span>
             <span class="workout__value">${workout.elevationGain}</span>
             <span class="workout__unit">m</span>
-          </div>
-        </li>`;
+          </div>`;
         }
 
+        html += `<div class="workout__actions">
+                <button class="workout__delete">Delete</button>
+                <button class="workout__edit">Edit</button>
+            </div>
+        </li>`;
+
         form.insertAdjacentHTML('afterend', html);
+
+        // Attach an event handlers
+        const deleteBtn = containerWorkouts.querySelector('.workout__delete');
+        deleteBtn.addEventListener('click', this._removeWorkout.bind(this));
     }
 
     _moveToPopup(e) {
-        const workoutEl = e.target.closest('.workout');
-
+        const workoutEl = this._findWorkoutElement(e);
         if (!workoutEl) return;
 
-        const workout = this.#workouts.find(w => w.id === workoutEl.dataset.id);
+        const workout = this._findWorkout(workoutEl);
+        if (!workout) return;
 
         this.#map.setView(workout.coords, this.#map.getZoom(), {
             animate: true,
@@ -275,9 +313,15 @@ class App {
     }
 
     reset() {
-        localStorage.removeItem('workouts');
-        location.reload();
+        if (confirm('Do you really want to delete ALL of your workouts? They can not be restored after.')) {
+            localStorage.removeItem('workouts');
+            location.reload();
+        }
     }
 }
 
 const app = new App();
+
+// Deletion features
+const deleteAllBtn = document.querySelector('.sidebar__btn--deleteAll');
+deleteAllBtn.addEventListener('click', app.reset);
