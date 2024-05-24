@@ -282,6 +282,8 @@ class App {
     }
 
     _moveToPopup(e) {
+        if (!this.#map) return;
+
         const workoutEl = this._findWorkoutElement(e);
         if (!workoutEl) return;
 
